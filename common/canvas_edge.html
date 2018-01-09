@@ -1,0 +1,135 @@
+<html>
+
+<body>
+    <div>
+        <img src="topgear2.png" style="width:10px;height:10px" id="image" />
+        <canvas id="canvas" height="500" width="500" style="border: 1px solid black;"></canvas>
+        <canvas id="edgeCanvas" height="500" width="500" style="border: 1px solid #cacaca;"></canvas>
+        <button type="button" id="button">click</button>
+    </div>
+    <script>
+        var canvas = document.getElementById("canvas");
+        canvas.addEventListener('mousemove', (event) => {
+            // console.log(event);
+        });
+        var ctx = canvas.getContext("2d");
+        var button = document.getElementById("button");
+        button.addEventListener("click", _onclick);
+
+        function distance(p1, p2) {
+            return Math.sqrt(Math.pow((p1.x - p2.x), 2) + Math.pow((p1.y - p2.y), 2));
+        }
+
+        function convolution(get_pixel, weights, x, y) {
+            var sum = 0;
+            for (var yi = -1; yi < 2; yi++) {
+                for (var xi = -1; xi < 2; xi++) {
+                    sum += get_pixel(x + xi, y + yi) * weights[yi + 1][xi + 1];
+                    // console.log(get_pixel(x + xi, y + yi))
+                }
+            }
+            return sum;
+        }
+        function get_grayscale_pixel(pixels, width, x, y) {
+            var sum = 0;
+            for (var i = 0; i < 3; i++) {
+                var p = pixels[(y * (width * 4)) + (x * 4) + i];
+                // if(p>0){
+                //     console.log(p);
+                // }
+                sum += p;
+            }
+            sum /= 3;
+            return sum;
+        }
+
+        function convolve(data, get_pixel, weights, width, height) {
+            for (var y = 1; y < height - 1; y++) {
+                for (var x = 1; x < width - 1; x++) {
+                    var px = convolution(get_pixel, weights, x, y);
+                    // console.log('pix', px);
+                    var ind = (y * (width * 4)) + (x * 4);
+                    data[ind] = px;
+                    data[ind + 1] = px;
+                    data[ind + 2] = px;
+                    data[ind + 3] = 255;
+                }
+            }
+        }
+
+        function edge_detection(data) {
+            var edgeCanvas = document.getElementById('edgeCanvas');
+            var edgeCtx = edgeCanvas.getContext("2d");
+            var width = 500;
+            var height = width;
+            // Pixel information for the input image ('data')
+            var get_pixel = (x, y) => get_grayscale_pixel(data, width, x, y);
+            // Pixel data object for the output image
+            var imageData = edgeCtx.getImageData(0, 0, width, height);
+            var edge_data = imageData.data;
+            // Smoothing weights
+            var d = 1.0 / 9;
+            var smooth_weights = [[d, d, d], [d, d, d], [d, d, d]];
+            convolve(edge_data, get_pixel, smooth_weights, width, height);
+            // Edge detection weights
+            var weights = [[0, 1, 0], [1, -4, 1], [0, 1, 0]];
+            // Pixel information for the smoothed image. Difference is that this uses 'edge_data' which will be filled from the smoothing operation (which used the input image data)
+            get_pixel = (x, y) => get_grayscale_pixel(edge_data, width, x, y);
+            convolve(edge_data,get_pixel, weights, width, height);
+            // Write pixels to canvas
+            edgeCtx.putImageData(imageData, 0, 0);
+        }
+
+        var points = [];
+        var image = document.getElementById('image');
+        image.crossOrigin = "Anonymous";
+        image.onload = () => {
+            var width = 500, height = 500;
+            ctx.drawImage(image, 0, 0, width, height);
+            var pixels = ctx.getImageData(0, 0, width, height).data;
+            edge_detection(pixels);
+        }
+
+        function _onclick() {
+            console.log(points);
+
+            var num = 10;
+            points.map((i) => console.log(i.x, i.y));
+            shuffle(points);
+            //estimate = em(points, num);
+            estimate = knearest(points, num);
+            for (var i = 0; i < estimate.length; i++) {
+                if (true) {
+                    ctx.beginPath();
+                    ctx.arc(estimate[i].point.x, estimate[i].point.y, 5, 0, 2 * Math.PI);
+                    ctx.fillStyle = "green";
+                    ctx.strokeStyle = "transparent";
+                    ctx.fill();
+                    ctx.stroke();
+                }
+            }
+        }
+        function getMousePos(canvas, evt) {
+            var rect = canvas.getBoundingClientRect();
+            return {
+                x: evt.clientX - rect.left,
+                y: evt.clientY - rect.top
+            };
+        }
+        canvas.addEventListener('mousemove', function (evt) {
+            if (evt.ctrlKey) {
+                var pos = getMousePos(canvas, evt);
+                points.push(pos);
+                //console.log(evt);
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 1, 0, 2 * Math.PI);
+                ctx.fillStyle = "black";
+                ctx.strokeStyle = "transparent";
+                ctx.fill();
+                ctx.stroke();
+            }
+        }, false);
+    </script>
+</body>
+
+</html>

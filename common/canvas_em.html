@@ -1,0 +1,176 @@
+<html>
+
+<body>
+    <div>
+        <img src="topgear.png" style="width:10px;height:10px" id="image"/>
+<canvas id="canvas" height="500" width="500" style="border: 1px solid black;"></canvas>
+<button type="button" id="button">click</button>
+</div>
+<script>
+    var canvas = document.getElementById("canvas");
+    var ctx = canvas.getContext("2d");
+    var button = document.getElementById("button");
+    button.addEventListener("click", _onclick);
+
+    function shuffle(a) {
+        for (let i = a.length; i; i--) {
+            let j = Math.floor(Math.random() * i);
+            [a[i - 1], a[j]] = [a[j], a[i - 1]];
+        }
+    }
+    function distance(p1, p2) {
+        return Math.sqrt(Math.pow((p1.x - p2.x), 2) + Math.pow((p1.y - p2.y), 2));
+
+    }
+    function sortPoints(points) {
+        var d = {};
+        d[0] = 0;
+        return _sortPoints(points, 1, 0, d).concat(points[0]);
+    }
+    function _sortPoints(points, index, prev, newPoints) {
+        var closest = 0;
+        var minDist = 100000;
+        var found = false;
+        for (var i = 1; i < points.length; i++) {
+            if (!newPoints[i]) {
+                found = true;
+                var dist = distance(points[prev], points[i]);
+                if (minDist > dist) {
+                    closest = i;
+                    minDist = dist;
+                }
+            }
+        }
+        newPoints[closest] = points[closest];
+        return !found ? [] : _sortPoints(points, index + 1, closest, newPoints).concat(points[closest]);
+    }
+    function knearest(points, num) {
+        var estimate = [];
+        for (var i = 0; i < num; i++) {
+            //var index = Math.floor(Math.random() * points.length);
+            var index = Math.floor(i * points.length / num);
+            estimate.push({ index, point: JSON.parse(JSON.stringify(points[index])) });
+        }
+        for (i = 0; i < 10; i++) {
+            // Reset cluster
+            estimate.forEach((c) => c.elem = []);
+            // Calculate and add nearest cluster
+            points.forEach((m) => {
+                min = 1000000;
+                minInd = 0;
+                estimate.forEach((c, i) => {
+                    dist = distance(c.point, m);
+                    if (dist < min) {
+                        min = dist;
+                        minInd = i;
+                    }
+                });
+                estimate[minInd].elem.push(m);
+            });
+            // Calculate center
+            estimate.forEach((c) => {
+                var sum = c.elem.reduce((p, e) => {
+                    p.x += e.x;
+                    p.y += e.y;
+                    return p;
+                }, { x: 0, y: 0 });
+                sum.x /= c.elem.length;
+                sum.y /= c.elem.length;
+                c.point = sum;
+            });
+            //console.log(JSON.stringify(clusters));
+        }
+        return estimate;
+    }
+
+    function em(points, num) {
+        points = sortPoints(points);
+        points.map((i) => console.log(i.x, i.y));
+        var estimate = [];
+        for (var i = 0; i < num; i++) {
+            //var index = Math.floor(Math.random() * points.length);
+            var index = Math.floor(i * points.length / num);
+            console.log((i * points.length / num));
+            estimate.push({ index, point: JSON.parse(JSON.stringify(points[index])) });
+        }
+        //for (var i = 0; i < estimate.length; i++) {
+        //    if (true) {
+        //        ctx.beginPath();
+        //        ctx.arc(estimate[i].point.x, estimate[i].point.y, 5, 0, 2 * Math.PI);
+        //        ctx.fillStyle = "orange";
+        //        ctx.strokeStyle = "transparent";
+        //        ctx.fill();
+        //        ctx.stroke();
+        //    }
+        //}
+        for (var j = 0; j < 1000; j++) {
+            estimate.forEach((v, i) => {
+                if (i !== 0 && i !== (estimate.length - 1)) {
+                    var left = distance(v.point, estimate[i - 1].point);
+                    var right = distance(v.point, estimate[i + 1].point);
+                    if (left < right) {
+                        estimate[i] = { index: v.index + 1, point: points[v.index + 1] };
+                    } else {
+                        estimate[i] = { index: v.index - 1, point: points[v.index - 1] };
+                    }
+                }
+            });
+
+        }
+        return estimate;
+    }
+
+    var points = [];
+    var image = document.getElementById('image');
+    image.onload = () => {
+        ctx.drawImage(image, 0, 0, 500, 500);
+        console.log(ctx.getImageData(0, 0, 1, 1))
+        var rect = canvas.getBoundingClientRect();
+        for (var y = 0; y < rect.height; y++) {
+            for (var x = 0; x < rect.width; x++) {
+            }
+        }
+    }
+    function _onclick() {
+        console.log(points);
+
+        var num = 10;
+        points.map((i) => console.log(i.x, i.y));
+        shuffle(points);
+        //estimate = em(points, num);
+        estimate = knearest(points, num);
+        for (var i = 0; i < estimate.length; i++) {
+            if (true) {
+                ctx.beginPath();
+                ctx.arc(estimate[i].point.x, estimate[i].point.y, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = "green";
+                ctx.strokeStyle = "transparent";
+                ctx.fill();
+                ctx.stroke();
+            }
+        }
+    }
+    function getMousePos(canvas, evt) {
+        var rect = canvas.getBoundingClientRect();
+        return {
+            x: evt.clientX - rect.left,
+            y: evt.clientY - rect.top
+        };
+    }
+    canvas.addEventListener('mousemove', function (evt) {
+        if (evt.ctrlKey) {
+            var pos = getMousePos(canvas, evt);
+            points.push(pos);
+            //console.log(evt);
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, 1, 0, 2 * Math.PI);
+            ctx.fillStyle = "black";
+            ctx.strokeStyle = "transparent";
+            ctx.fill();
+            ctx.stroke();
+        }
+    }, false);
+</script>
+</body>
+
+</html>
